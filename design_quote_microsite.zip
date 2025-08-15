@@ -1,72 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Design Services Quote Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-YkQH/8xT8a1lA7w6vFZq+rIjtXc6tKcG9q0gWvGqzT1b2k1x+Xx+1z6p7wADmZgI6pA/6z7m0o5a6vQk6rQ8HQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <style>
-    :root {
-      --bg: #f7f7f8;
-      --card: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --brand: #111827;
-      --accent: #2563eb;
-      --border: #e5e7eb;
-      --success: #059669;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; padding: 24px; background: var(--bg); color: var(--text);
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", Helvetica, sans-serif;
-    }
-    .wrap { max-width: 900px; margin: 0 auto; }
-    h1 { margin: 0 0 16px; font-size: 28px; line-height: 1.2; color: var(--brand); }
-    .card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-      padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    label { font-size: 14px; color: var(--muted); margin-bottom: 6px; display: block; }
-    select, input[type="number"] {
-      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-      border-radius: 10px; background: #fff; font-size: 15px;
-    }
-    .row { margin-top: 8px; }
-    .actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-    button {
-      border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; font-size: 15px;
-    }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-secondary { background: #111827; color: #fff; }
-    .btn-disabled { opacity: 0.6; cursor: not-allowed; }
-    #quote {
-      margin-top: 18px;
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      background: #fff;
-    }
-    .summary h2 { margin: 0 0 12px; font-size: 20px; }
-    .summary p { margin: 6px 0; }
-    .total { font-weight: 700; font-size: 18px; color: var(--success); margin-top: 10px; }
-    .muted { color: var(--muted); font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>Design Services Quote Generator</h1>
+# poly_quote.py
+# Generates a simple PDF quote using built-in Helvetica (no external TTF required)
 
-    <div class="card">
-      <form id="quoteForm" onsubmit="return false;">
-        <div class="grid">
-          <div class="col">
-            <label for="service">Select Service</label>
-            <select id="service">
-              <option value="Animated Artwork Development">Animated Artwork Development</option>
-              <option value="You Create, We Animate">You Create, We Animate</option>
-              <option value="Animated Resizes (Same Orientation)">Animated Resizes (Same Orientation)</option>
-              <option value="Animated Resizes (Different Orientation)">Animated Resizes (Different Orientation)</option>
-              <option value="Additional Rounds of Amends">Additional Round
+from datetime import datetime
+from fpdf import FPDF
+
+def create_pdf(
+    title="Design Services Quote",
+    items=None,
+    currency="AUD",
+):
+    """
+    Build a simple quote PDF and return bytes.
+    :param title: Title shown at the top of the PDF
+    :param items: list of dicts like:
+                  [{"desc": "Animated Artwork Development", "qty": 1, "unit": 500.0},
+                   {"desc": "Additional Rounds of Amends", "qty": 2, "unit": 50.0}]
+    :param currency: Currency code label for display only
+    :return: bytes of the generated PDF
+    """
+    if items is None:
+        # Example line items (replace with your real data)
+        items = [
+            {"desc": "Animated Artwork Development", "qty": 1, "unit": 500.0},
+            {"desc": "Additional Rounds of Amends", "qty": 2, "unit": 50.0},
+        ]
+
+    # --- Prepare totals ---
+    def money(n):
+        # Simple formatting; swap to locale/Intl if you need localization
+        return f"{currency} {n:,.2f}"
+
+    subtotal = sum(i["qty"] * i["unit"] for i in items)
+    tax_rate = 0.0  # set if needed, e.g., 0.10 for 10%
+    tax = subtotal * tax_rate
+    total = subtotal + tax
+
+    # --- PDF setup ---
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Use built-in Helvetica (no add_font required)
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, title, ln=True)
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 7, f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(2)
+
+    # Table header
+    pdf.set_font("Helvetica", "B", 11)
+    col_desc_w = 110
+    col_qty_w = 20
+    col_unit_w = 30
+    col_total_w = 30
+    row_h = 8
+
+    pdf.cell(col_desc_w, row_h, "Description", border=1)
+    pdf.cell(col_qty_w, row_h, "Qty", border=1, align="R")
+    pdf.cell(col_unit_w, row_h, "Unit", border=1, align="R")
+    pdf.cell(col_total_w, row_h, "Line Total", border=1,_
